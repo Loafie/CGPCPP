@@ -11,7 +11,7 @@
 #include <algorithm>
 
 #define NUM_PER_GEN 20
-#define SAMPLES 500
+#define SAMPLES 200
 #define SAMPLES_RANGE 10.0
 #define MUTATION_RATE 0.02
 
@@ -116,7 +116,7 @@ double* normalizeOuts(double* outs, int len) {
 void imageCatStressTest(unsigned char* images, unsigned char* labels, CGPFunction** funcs) {
     CGPContainer* theCGPs[NUM_PER_GEN];
     for (int i = 0; i < NUM_PER_GEN; i++) {
-        theCGPs[i] = new CGPContainer(new CGP(784, 10, 5, 40, 40, 10, funcs), 0.0);
+        theCGPs[i] = new CGPContainer(new CGP(784, 10, 20, 200, 200, 10, funcs), 0.0);
     }
     int gens = 0;
     CGP* Winner;
@@ -170,9 +170,20 @@ unsigned char* getTrainingLabels() {
     std::ifstream inFile("C:/MNIST/train/train-labels.idx1-ubyte", std::ios::binary);
     char header[16];
     unsigned char* labels = new unsigned char[60000];
-    inFile.read(header, 16);
+    inFile.read(header, 8);
     inFile.read((char*)labels, 60000);
     return labels;
+}
+
+void showImageLabels(unsigned char* i, unsigned char* l) {
+    int d = rand() % 60000;
+    std::cout << "Label: " << (int)l[d] << "\n";
+        for (int x = 0; x < 784; x++) {
+            if (x % 28 == 0) std::cout << "\n";
+            if ((int)i[x + 784 * d] > 10) std::cout << "X"; else std::cout << " ";
+    }
+
+
 }
 
 
@@ -195,5 +206,6 @@ int main()
     unsigned char* trainingImages = getTrainingImages();
     unsigned char* trainingLabels = getTrainingLabels();
     imageCatStressTest(trainingImages, trainingLabels, funcs);
+    //showImageLabels(trainingImages, trainingLabels);
 }
 
