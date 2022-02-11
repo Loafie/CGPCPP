@@ -10,8 +10,8 @@
 #include <time.h>
 #include <algorithm>
 
-#define NUM_PER_GEN 20
-#define SAMPLES 200
+#define NUM_PER_GEN 10
+#define SAMPLES 100
 #define SAMPLES_RANGE 10.0
 #define MUTATION_RATE 0.02
 
