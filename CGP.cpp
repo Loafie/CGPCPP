@@ -1,6 +1,7 @@
 #include "CGP.h"
 #include <stdlib.h>
 #include <time.h>
+#include <fstream>
 
 CGP::CGP(int inputs, int outputs, int columnsBack, int rows, int cols, int numFuncs, CGPFunction** functions) {
 	this->inputs = inputs;
@@ -28,6 +29,37 @@ CGP::CGP(CGP* other, double mRate) {
 	this->outputNodes = mutatedOutputs(other, mRate);
 	this->activeNodes = getActiveNodes();
 	this->activeNodeCount = countActiveNodes();
+}
+
+CGP::CGP(const char* fileName, CGPFunction** funcs) {
+	std::ifstream inFile(fileName, std::ios::binary);
+	inFile.read((char *)&this->inputs, sizeof(int));
+	inFile.read((char*)&this->outputs, sizeof(int));
+	inFile.read((char*)&this->columnsBack, sizeof(int));
+	inFile.read((char*)&this->rows, sizeof(int));
+	inFile.read((char*)&this->cols, sizeof(int));
+	inFile.read((char*)&this->numFuncs, sizeof(int));
+	Node** theNodes = new Node * [this->rows * this->cols];
+	for (int i = 0; i < this->rows * this->cols; i++) {
+		int a = 0;
+		int f = 0;
+		inFile.read((char*)&a, sizeof(int));
+		inFile.read((char*)&f, sizeof(int));
+		int* ins = new int[a];
+		inFile.read((char*)ins, sizeof(int) * a);
+		Node* n = new Node(ins, f, a);
+		theNodes[i] = n;
+	}
+	int* theOuts = new int[this->outputs];
+	for (int i = 0; i < this->outputs; i++) {
+		inFile.read((char*)&theOuts[i], sizeof(int));
+	}
+	this->nodes = theNodes;
+	this->outputNodes = theOuts;
+	inFile.close();
+	this->activeNodes = getActiveNodes();
+	this->activeNodeCount = countActiveNodes();
+	this->functions = funcs;
 }
 
 
@@ -206,4 +238,26 @@ std::ostream& operator << (std::ostream& out, const CGP& c)
 	}
 	std::cout << "\n";
 	return out;
+}
+
+
+void CGP::writeToFile(const char* fileName) {
+	std::ofstream outFile(fileName, std::ios::out | std::ios::binary);
+	outFile.write((char*)&this->inputs, sizeof(int));
+	outFile.write((char*)&this->outputs, sizeof(int));
+	outFile.write((char*)&this->columnsBack, sizeof(int));
+	outFile.write((char*)&this->rows, sizeof(int));
+	outFile.write((char*)&this->cols, sizeof(int));
+	outFile.write((char*)&this->numFuncs, sizeof(int));
+	for (int i = 0; i < rows * cols; i++) {
+		int f = this->nodes[i]->function;
+		int a = this->nodes[i]->arity;
+		outFile.write((char*)&a, sizeof(int));
+		outFile.write((char*)&f, sizeof(int));
+		outFile.write((char*)this->nodes[i]->inputs, sizeof(int) * a);
+	}
+	for (int i = 0; i < outputs; i++) {
+		outFile.write((char*)&this->outputNodes[i], sizeof(int));
+	} 
+	outFile.close();
 }

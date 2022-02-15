@@ -9,11 +9,13 @@
 #include <stdlib.h>
 #include <time.h>
 #include <algorithm>
+#include <thread>
+#include <string>
 
-#define NUM_PER_GEN 10
-#define SAMPLES 100
+#define NUM_PER_GEN 100
+#define SAMPLES 500
 #define SAMPLES_RANGE 10.0
-#define MUTATION_RATE 0.02
+#define MUTATION_RATE 0.01
 
 
 float target(float x) {
@@ -113,6 +115,22 @@ double* normalizeOuts(double* outs, int len) {
     return outs;
 }
 
+
+
+void scoreCGP(unsigned char* images, unsigned char* labels, int* samples, CGPFunction** funcs, CGPContainer* theCGP) {
+    for (int i = 0; i < SAMPLES; i++) {
+        double input[784];
+        for (int x = 0; x < 784; x++) {
+            input[x] = (double)images[x + (784 * samples[i])];
+        }
+        // evaluate each CGP
+        double* output;
+        output = normalizeOuts(theCGP->theCGP->evaluate(input), 10);
+        theCGP->score += output[(int)labels[samples[i]]];
+        delete[] output;
+    }
+}
+
 void imageCatStressTest(unsigned char* images, unsigned char* labels, CGPFunction** funcs) {
     CGPContainer* theCGPs[NUM_PER_GEN];
     for (int i = 0; i < NUM_PER_GEN; i++) {
@@ -126,20 +144,20 @@ void imageCatStressTest(unsigned char* images, unsigned char* labels, CGPFunctio
         for (int i = 0; i < SAMPLES; i++) {
             samples[i] = rand() % 60000;
         }
-        //iterate through each sample
-        for (int i = 0; i < SAMPLES; i++) {
-            double input[784];
-            for (int x = 0; x < 784; x++) {
-                input[x] = (double)images[x + (784 * samples[i])];
-            }
-            // evaluate each CGP
-            for (int j = 0; j < NUM_PER_GEN; j++) {
-                double* output;
-                output = normalizeOuts(theCGPs[j]->theCGP->evaluate(input), 10);
-                theCGPs[j]->score += output[(int)labels[samples[i]]];
-                delete[] output;
-            }
+
+
+        
+        std::thread* threads[NUM_PER_GEN];
+
+        // evaluate each CGP
+        for (int j = 0; j < NUM_PER_GEN; j++) {
+            threads[j] = new std::thread(scoreCGP, images, labels, samples, funcs, theCGPs[j]);
         }
+        for (int j = 0; j < NUM_PER_GEN; j++) {
+            threads[j]->join();
+           // delete threads[j];
+        }
+        //delete[] threads;
         //sort by score and reproduce
         std::sort(theCGPs, theCGPs + NUM_PER_GEN, [](CGPContainer* s1, CGPContainer* s2) {return s1->score > s2->score; });
         Winner = new CGP(theCGPs[0]->theCGP);
@@ -150,6 +168,11 @@ void imageCatStressTest(unsigned char* images, unsigned char* labels, CGPFunctio
         }
         std::cout << "Generation: " << gens << ", Low Score: " << top_score << "\n";
         gens++;
+        Winner->writeToFile("Current-Winner.CGP");
+        if (gens % 1000 == 0) {
+            std::string fname = "Gen-" + std::to_string(gens) + "-Winner.CGP";
+            Winner->writeToFile(fname.c_str());
+        }
         delete Winner;
     }
 
@@ -162,6 +185,7 @@ unsigned char* getTrainingImages() {
     unsigned char *images = new unsigned char[60000 * 784];
     inFile.read(header, 16);
     inFile.read((char*)images, 60000 * 784);
+    inFile.close();
     return images;
 }
 
@@ -172,6 +196,7 @@ unsigned char* getTrainingLabels() {
     unsigned char* labels = new unsigned char[60000];
     inFile.read(header, 8);
     inFile.read((char*)labels, 60000);
+    inFile.close();
     return labels;
 }
 
@@ -184,6 +209,15 @@ void showImageLabels(unsigned char* i, unsigned char* l) {
     }
 
 
+}
+
+void testFileWrite(CGPFunction** funcs) {
+    CGP* a = new CGP(2, 2, 2, 4, 4, 10, funcs);
+    a->writeToFile("Test.CGP");
+    std::cout << *a;
+    delete a;
+    CGP* b = new CGP("Test.CGP", funcs);
+    std::cout << *b;
 }
 
 
@@ -199,13 +233,14 @@ int main()
     funcs[5] = new CGPFunction([](double* ins) {return 2.0; }, 0);
     funcs[6] = new CGPFunction([](double* ins) {return 10.0; }, 0);
     funcs[7] = new CGPFunction([](double* ins) {return 0.0; }, 0);
-    funcs[8] = new CGPFunction([](double* ins) {return 1.0 ? ins[0] >= ins[2] && ins[1] >= ins[3] : 0.0; }, 3);
-    funcs[9] = new CGPFunction([](double* ins) {return 1.0 ? ins[0] >= ins[2] || ins[1] >= ins[3] : 0.0; }, 3);
-
+    funcs[8] = new CGPFunction([](double* ins) {return 1.0 ? ins[0] >= ins[2] && ins[1] >= ins[2] : 0.0; }, 3);
+    funcs[9] = new CGPFunction([](double* ins) {return 1.0 ? ins[0] >= ins[2] || ins[1] >= ins[2] : 0.0; }, 3);
+    //testFileWrite(funcs);
     //main_approximation_test(funcs);
     unsigned char* trainingImages = getTrainingImages();
     unsigned char* trainingLabels = getTrainingLabels();
     imageCatStressTest(trainingImages, trainingLabels, funcs);
     //showImageLabels(trainingImages, trainingLabels);
+    return 0;
 }
 
