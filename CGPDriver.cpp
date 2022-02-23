@@ -131,10 +131,43 @@ void scoreCGP(unsigned char* images, unsigned char* labels, int* samples, CGPFun
     }
 }
 
+void normScores(CGPContainer** theCGPs, int n) {
+    double total = 0.0;
+    double floor = (theCGPs[NUM_PER_GEN - 1]->score / (float)SAMPLES);
+    double diff = (theCGPs[0]->score / (float)SAMPLES) - floor;
+    if (diff == 0.0) {
+        for (int i = 0; i < NUM_PER_GEN; i++) {
+            theCGPs[i]->score = 1.0 / (float)NUM_PER_GEN;
+        }
+    }
+    else {
+        for (int i = 0; i < NUM_PER_GEN; i++) {
+            theCGPs[i]->score = pow((((theCGPs[i]->score / (float)SAMPLES) - floor) / diff), n);
+            total += theCGPs[i]->score;
+        }
+        for (int i = 0; i < NUM_PER_GEN; i++) {
+            theCGPs[i]->score = theCGPs[i]->score / total;
+        }
+    }
+}
+
+int drawParentFromDist(CGPContainer** theCGPs) {
+    double roll = rand() / (float)RAND_MAX;
+    int idx = 0;
+    while (idx < NUM_PER_GEN) {
+        roll -= theCGPs[idx]->score;
+        if (roll <= 0) return idx;
+        idx++;
+    }
+    return idx;
+}
+
+
+
 void imageCatStressTest(unsigned char* images, unsigned char* labels, CGPFunction** funcs) {
-    CGPContainer* theCGPs[NUM_PER_GEN];
+    CGPContainer** theCGPs = new CGPContainer*[NUM_PER_GEN];
     for (int i = 0; i < NUM_PER_GEN; i++) {
-        theCGPs[i] = new CGPContainer(new CGP(784, 10, 20, 200, 200, 10, funcs), 0.0);
+        theCGPs[i] = new CGPContainer(new CGP(784, 10, 10, 200, 300, 10, funcs), 0.0);
     }
     int gens = 0;
     CGP* Winner;
@@ -162,10 +195,18 @@ void imageCatStressTest(unsigned char* images, unsigned char* labels, CGPFunctio
         std::sort(theCGPs, theCGPs + NUM_PER_GEN, [](CGPContainer* s1, CGPContainer* s2) {return s1->score > s2->score; });
         Winner = new CGP(theCGPs[0]->theCGP);
         double top_score = theCGPs[0]->score / (float)SAMPLES;
+        normScores(theCGPs, 2);
+
+        CGPContainer** newCGPs = new CGPContainer*[NUM_PER_GEN];
+        for (int i = 0; i < NUM_PER_GEN; i++) {
+            int idx = drawParentFromDist(theCGPs);
+            newCGPs[i] = new CGPContainer(new CGP(theCGPs[idx]->theCGP, MUTATION_RATE), 0.0);
+        }
         for (int i = 0; i < NUM_PER_GEN; i++) {
             delete theCGPs[i];
-            theCGPs[i] = new CGPContainer(new CGP(Winner, MUTATION_RATE), 0.0);
         }
+        delete [] theCGPs;
+        theCGPs = newCGPs;
         std::cout << "Generation: " << gens << ", Low Score: " << top_score << "\n";
         gens++;
         Winner->writeToFile("Current-Winner.CGP");
