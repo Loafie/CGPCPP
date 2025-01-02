@@ -17,6 +17,21 @@ CGP::CGP(int inputs, int outputs, int columnsBack, int rows, int cols, int numFu
 	this->activeNodeCount = countActiveNodes();
 }
 
+CGP::CGP(int inputs, int outputs, int columnsBack, int rows, int cols) {
+	this->inputs = inputs;
+	this->outputs = outputs;
+	this->columnsBack = columnsBack;
+	this->rows = rows;
+	this->cols = cols;
+	this->numFuncs = 10;
+	this->functions = defaultFunctions();
+	this->nodes = initializeRandomNodes();
+	this->outputNodes = initializeRandomOutputs();
+	this->activeNodes = getActiveNodes();
+	this->activeNodeCount = countActiveNodes();
+}
+
+
 CGP::CGP(CGP* other, double mRate) {
 	this->inputs = other->inputs;
 	this->outputs = other->outputs;
@@ -202,6 +217,21 @@ int CGP::countActiveNodes() {
 		}
 	}
 	return count;
+}
+
+CGPFunction** CGP::defaultFunctions() {
+	CGPFunction* funcs[10];
+    funcs[0] = new CGPFunction([](double* ins) {return ins[0] + ins[1]; }, 2);
+    funcs[1] = new CGPFunction([](double* ins) {return ins[0] - ins[1]; }, 2);
+    funcs[2] = new CGPFunction([](double* ins) {return ins[0] * ins[1]; }, 2);
+    funcs[3] = new CGPFunction([](double* ins) {return ins[1] != 0 ? ins[0] / ins[1] : 0; }, 2);
+    funcs[4] = new CGPFunction([](double* ins) {return 1.0; }, 0);
+    funcs[5] = new CGPFunction([](double* ins) {return 2.0; }, 0);
+    funcs[6] = new CGPFunction([](double* ins) {return 10.0; }, 0);
+    funcs[7] = new CGPFunction([](double* ins) {return 0.0; }, 0);
+    funcs[8] = new CGPFunction([](double* ins) {return 1.0 ? ins[0] >= ins[2] && ins[1] >= ins[2] : 0.0; }, 3);
+    funcs[9] = new CGPFunction([](double* ins) {return 1.0 ? ins[0] >= ins[2] || ins[1] >= ins[2] : 0.0; }, 3);
+	return funcs;
 }
 
 CGP::~CGP() {

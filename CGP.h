@@ -25,9 +25,11 @@ private:
 	Node** initializeRandomNodes();
 	int* getRangeBack(int index);
 	void setNodeActive(int index, bool* act);
+	static CGPFunction** defaultFunctions();
 	
 public:
 	CGP(int inputs, int outputs, int columnsBack, int rows, int cols, int numFuncs, CGPFunction** functions);
+	CGP(int inputs, int outputs, int columnsBack, int rows, int cols);
 	CGP(CGP* other) : CGP(other, 0.0) {};
 	CGP(CGP* other, double mutationRate);
 	CGP(const char* fileName, CGPFunction** funcs);
